@@ -1,5 +1,7 @@
 # Simple _hopefully PBR_ openGL renderer
 
+![Screenshot of program](Window.png)
+
 This is following the guidance of [learnopengl](https://learnopengl.com/).
 
 ## Tech:

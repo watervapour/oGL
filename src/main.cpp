@@ -202,15 +202,28 @@ int main(int argc, char **argv){
         glfwSetWindowTitle(window, windowTitle.c_str());
 
         processInput(window);
-        glClearColor(0.1f, 0.45f, 0.35f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // object
         shaderCrate.use();
-        shaderCrate.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
-        shaderCrate.setVec3("lightColor",  1.0f, 1.0f, 1.0f);
-        shaderCrate.setVec3("lightPos", lightPos);
+        shaderCrate.setVec3("material.ambient", 1.0f, 0.5f, 0.31f);
+        shaderCrate.setVec3("material.diffuse", 1.0f, 0.5f, 0.31f);
+        shaderCrate.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
+        shaderCrate.setFloat("material.shininess", 32.0f);
+
+        glm::vec3 lightColor;
+        lightColor.x = sin(glfwGetTime() * 2.0f);
+        lightColor.y = sin(glfwGetTime() * 0.7f);
+        lightColor.z = sin(glfwGetTime() * 1.3f);
+        glm::vec3 lightDiffuse = lightColor * glm::vec3(0.5f);
+        glm::vec3 lightAmbient = lightDiffuse * glm::vec3(0.2f);
+        shaderCrate.setVec3("light.position", lightPos);
+        shaderCrate.setVec3("light.ambient", lightAmbient);
+        shaderCrate.setVec3("light.diffuse", lightDiffuse);
+        shaderCrate.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
         shaderCrate.setVec3("viewPos", cam.position);
+        
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f));
         model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));

@@ -7,9 +7,11 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "shader.h"
+#include "camera.h"
 
 #include <iostream>
 #include <cmath>
+#include <string>
 
 float vertices[] = {
     // posistions,            coords
@@ -60,11 +62,51 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height){
     glViewport(0, 0, width, height);
 }
 
+Camera cam;
+
 void processInput(GLFWwindow *window){
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
         glfwSetWindowShouldClose(window, true);
     }
+
+    float cameraSpeed = 2.5f * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cam.processKeyboard(FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cam.processKeyboard(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cam.processKeyboard(LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cam.processKeyboard(RIGHT, deltaTime);
 }
+
+float lastX = 400.0f;
+float lastY = 300.0f;
+bool firstMouse = true;
+void mouse_callback(GLFWwindow* window, double xpos, double ypos){
+    if (firstMouse){
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+    
+    cam.processMouseMovement( ((float)xpos - lastX), (lastY - (float)ypos), true);
+    lastX = xpos;
+    lastY = ypos;
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+    cam.ProcessMouseScroll(yoffset);
+}
+
+
+// frame timing variables
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+float frameSum = 0.0f;
+int fpsCount = 0;
+int fpsHistoric = 0;
+
 
 int main(int argc, char **argv){
 
@@ -85,6 +127,9 @@ int main(int argc, char **argv){
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
         std::cerr << "Failed to init GLAD.\n";
@@ -167,16 +212,40 @@ int main(int argc, char **argv){
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     while (!glfwWindowShouldClose(window)) {
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        fpsCount++;
+        frameSum += deltaTime;
+        if (frameSum >= 1.0f){
+            fpsHistoric = fpsCount;
+            fpsCount = 0;
+            frameSum -= 1.0f;
+        }
+        std::string windowTitle = "oGL";
+        windowTitle.append(" | FOV: ");
+        windowTitle.append(std::to_string(cam.fov));
+        windowTitle.append(" | FPS = ");
+        windowTitle.append(std::to_string(fpsHistoric));
+        windowTitle.append(" | frameTime = ");
+        windowTitle.append(std::to_string(deltaTime*1000.0f));
+        windowTitle.append("ms");
+        glfwSetWindowTitle(window, windowTitle.c_str());
+
         processInput(window);
         glClearColor(0.1f, 0.45f, 0.35f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.use();
 
-        glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        const float radius = 10.0f;
+        float camX = sin(glfwGetTime()) * radius;
+        float camZ = cos(glfwGetTime()) * radius;
+
+        glm::mat4 view = cam.GetViewMatrix();
         glm::mat4 projection;
-        projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(cam.fov), 800.0f / 600.0f, 0.1f, 100.0f);
 
         unsigned int viewLoc = glGetUniformLocation(shader.ID, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));

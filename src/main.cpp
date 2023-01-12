@@ -154,11 +154,49 @@ int main(int argc, char **argv){
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(5 * sizeof(float)));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+    // texture_diffuse
+    unsigned int crateDiffuse;
+    glGenTextures(1, &crateDiffuse);
+    glBindTexture(GL_TEXTURE_2D, crateDiffuse);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    int texWidth, texHeight, texChannels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load("../res/container2.png", &texWidth, &texHeight, &texChannels, 0);
+    if (data) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    } else {
+        std::cerr << "Failed to load texture: " << "../res/container2.png" << std::endl;
+    }
+    stbi_image_free(data);
+    // texture_specular
+    unsigned int crateSpecular;
+    glGenTextures(1, &crateSpecular);
+    glBindTexture(GL_TEXTURE_2D, crateSpecular);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    stbi_set_flip_vertically_on_load(true);
+    data = stbi_load("../res/container2_specular.png", &texWidth, &texHeight, &texChannels, 0);
+    if (data) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    } else {
+        std::cerr << "Failed to load texture: " << "../res/container2_specular.png" << std::endl;
+    }
+    stbi_image_free(data);
+
 
     shader lightingShader("./vertex.vs", "./fragment_light.fs");
     lightingShader.use();
@@ -172,7 +210,7 @@ int main(int argc, char **argv){
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(5 * sizeof(float)));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -207,20 +245,19 @@ int main(int argc, char **argv){
 
         // object
         shaderCrate.use();
-        shaderCrate.setVec3("material.ambient", 1.0f, 0.5f, 0.31f);
-        shaderCrate.setVec3("material.diffuse", 1.0f, 0.5f, 0.31f);
-        shaderCrate.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
+        shaderCrate.setInt("material.diffuse", 0);
+        shaderCrate.setInt("material.specular", 1);
         shaderCrate.setFloat("material.shininess", 32.0f);
 
         glm::vec3 lightColor;
-        lightColor.x = sin(glfwGetTime() * 2.0f);
-        lightColor.y = sin(glfwGetTime() * 0.7f);
-        lightColor.z = sin(glfwGetTime() * 1.3f);
+        lightColor.x = 0.7f + sin(glfwGetTime() * 2.0f) * 0.3f;
+        lightColor.y = 0.7f +sin(glfwGetTime() * 0.7f) * 0.3f;
+        lightColor.z = 0.7f +sin(glfwGetTime() * 1.3f) * 0.3f;
         glm::vec3 lightDiffuse = lightColor * glm::vec3(0.5f);
         glm::vec3 lightAmbient = lightDiffuse * glm::vec3(0.2f);
-        shaderCrate.setVec3("light.position", lightPos);
         shaderCrate.setVec3("light.ambient", lightAmbient);
         shaderCrate.setVec3("light.diffuse", lightDiffuse);
+        shaderCrate.setVec3("light.position", lightPos);
         shaderCrate.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
         shaderCrate.setVec3("viewPos", cam.position);
         
@@ -232,6 +269,11 @@ int main(int argc, char **argv){
         shaderCrate.setMat4("model", model);
         shaderCrate.setMat4("view", view);
         shaderCrate.setMat4("projection", projection);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, crateDiffuse);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, crateSpecular);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -243,6 +285,7 @@ int main(int argc, char **argv){
         lightingShader.setMat4("view", view);
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("model", model);
+        lightingShader.setVec3("color", lightColor);
         glBindVertexArray(lightVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 

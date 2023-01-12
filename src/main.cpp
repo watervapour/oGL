@@ -57,6 +57,19 @@ float vertices[] = {
     -0.5f, 0.5f, 0.5f,      0.0f, 1.0f, 0.0f,   0.0f, 0.0f,
     -0.5f, 0.5f, -0.5f,     0.0f, 1.0f, 0.0f,   0.0f, 1.0f};
 
+glm::vec3 cubePositions[] ={
+    glm::vec3( 0.0f, 0.0f, 0.0f),
+    glm::vec3( 2.0f, 5.0f, -15.0f),
+    glm::vec3(-1.5f, -2.2f, -2.5f),
+    glm::vec3(-3.8f, -2.0f, -12.3f),
+    glm::vec3( 2.4f, -0.4f, -3.5f),
+    glm::vec3(-1.7f, 3.0f, -7.5f),
+    glm::vec3( 1.3f, -2.0f, -2.5f),
+    glm::vec3( 1.5f, 2.0f, -2.5f),
+    glm::vec3( 1.5f, 0.2f, -1.5f),
+    glm::vec3(-1.3f, 1.0f, -1.5f)
+};
+
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height){
@@ -76,15 +89,23 @@ void processInput(GLFWwindow *window){
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
         glfwSetWindowShouldClose(window, true);
     }
+    bool sprint = false;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        sprint = true;
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cam.processKeyboard(FORWARD, deltaTime);
+        cam.processKeyboard(FORWARD, deltaTime, sprint);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cam.processKeyboard(BACKWARD, deltaTime);
+        cam.processKeyboard(BACKWARD, deltaTime, sprint);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cam.processKeyboard(LEFT, deltaTime);
+        cam.processKeyboard(LEFT, deltaTime, sprint);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cam.processKeyboard(RIGHT, deltaTime);
+        cam.processKeyboard(RIGHT, deltaTime, sprint);
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        cam.processKeyboard(UP, deltaTime, sprint);
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        cam.processKeyboard(DOWN, deltaTime, sprint);
+    
 }
 
 float lastX = 400.0f;
@@ -240,54 +261,60 @@ int main(int argc, char **argv){
         glfwSetWindowTitle(window, windowTitle.c_str());
 
         processInput(window);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // object
         shaderCrate.use();
         shaderCrate.setInt("material.diffuse", 0);
         shaderCrate.setInt("material.specular", 1);
-        shaderCrate.setFloat("material.shininess", 32.0f);
+        shaderCrate.setFloat("material.shininess", 64.0f);
 
-        glm::vec3 lightColor;
-        lightColor.x = 0.7f + sin(glfwGetTime() * 2.0f) * 0.3f;
-        lightColor.y = 0.7f +sin(glfwGetTime() * 0.7f) * 0.3f;
-        lightColor.z = 0.7f +sin(glfwGetTime() * 1.3f) * 0.3f;
-        glm::vec3 lightDiffuse = lightColor * glm::vec3(0.5f);
-        glm::vec3 lightAmbient = lightDiffuse * glm::vec3(0.2f);
+        glm::vec3 lightColor = glm::vec3(1.0f);
+        glm::vec3 lightDiffuse = lightColor * glm::vec3(0.9f);
+        glm::vec3 lightAmbient = lightDiffuse * glm::vec3(0.5f);
         shaderCrate.setVec3("light.ambient", lightAmbient);
         shaderCrate.setVec3("light.diffuse", lightDiffuse);
-        shaderCrate.setVec3("light.position", lightPos);
+        shaderCrate.setVec3("light.position", cam.position);
+        shaderCrate.setVec3("light.direction", cam.front);
+        shaderCrate.setFloat("light.cutoff", glm::cos(glm::radians(12.5f)));
+        shaderCrate.setFloat("light.outerCutoff", glm::cos(glm::radians(17.5f)));
         shaderCrate.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+        shaderCrate.setFloat("light.constant", 1.0f);
+        shaderCrate.setFloat("light.linear", 0.59f);
+        shaderCrate.setFloat("light.quadratic", 0.032f);
         shaderCrate.setVec3("viewPos", cam.position);
         
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f));
-        model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
         glm::mat4 view = cam.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(cam.fov), 800.0f / 600.0f, 0.1f, 100.0f);
-        shaderCrate.setMat4("model", model);
-        shaderCrate.setMat4("view", view);
-        shaderCrate.setMat4("projection", projection);
+            
+        for (int i = 0; i < 10; i++){    
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, cubePositions[i]);
+            model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f) + (20.0f * i), glm::vec3(0.5f, 1.0f, 0.0f));
+            shaderCrate.setMat4("model", model);
+            shaderCrate.setMat4("view", view);
+            shaderCrate.setMat4("projection", projection);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, crateDiffuse);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, crateSpecular);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, crateDiffuse);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, crateSpecular);
+            glBindVertexArray(VAO);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
         // light
-        lightingShader.use();
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, lightPos);
-        model = glm::scale(model, glm::vec3(0.2f));
-        lightingShader.setMat4("view", view);
-        lightingShader.setMat4("projection", projection);
-        lightingShader.setMat4("model", model);
-        lightingShader.setVec3("color", lightColor);
-        glBindVertexArray(lightVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // lightingShader.use();
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, lightPos);
+        // model = glm::scale(model, glm::vec3(0.2f));
+        // lightingShader.setMat4("view", view);
+        // lightingShader.setMat4("projection", projection);
+        // lightingShader.setMat4("model", model);
+        // lightingShader.setVec3("color", lightColor);
+        // glBindVertexArray(lightVAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
 
 
         glfwSwapBuffers(window);

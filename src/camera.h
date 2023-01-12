@@ -11,7 +11,9 @@ enum Camera_Movement {
     FORWARD,
     BACKWARD,
     LEFT,
-    RIGHT
+    RIGHT,
+    UP,
+    DOWN
 };
 
 const float YAW         = -90.0f;
@@ -63,8 +65,10 @@ public:
         return glm::lookAt(position, position + front, up);
     }
 
-    void processKeyboard(Camera_Movement direction, float deltaTime){
+    void processKeyboard(Camera_Movement direction, float deltaTime, bool fast){
         float velocity = movementSpeed * deltaTime;
+        if (fast)
+            velocity *= 4;
         if (direction == FORWARD)
             position += front * velocity;
         if (direction == BACKWARD)
@@ -73,6 +77,10 @@ public:
             position -= right * velocity;
         if (direction == RIGHT)
             position += right * velocity;
+        if (direction == UP)
+            position += up * velocity;
+        if (direction == DOWN)
+            position -= up * velocity;
     }
 
     void processMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true){

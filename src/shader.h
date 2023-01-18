@@ -1,5 +1,5 @@
-#ifndef SHADER_H_
-#define SHADER_H_
+#ifndef SHADER_H
+#define SHADER_H
 
 #include <glad\glad.h>
 #include <glm/glm.hpp>
@@ -9,13 +9,13 @@
 #include <sstream>
 #include <iostream>
 
-class shader{
+class Shader{
 public:
     // the program's ID
     unsigned int ID;
 
     // read and build shader
-    shader(const char* vertexPath, const char* fragmentPath){
+    Shader(const char* vertexPath, const char* fragmentPath){
         // 1. retrieve source code for vertex and fragment shaders
         std::string vertexCode;
         std::string fragmentCode;
@@ -118,4 +118,4 @@ public:
     }
 };
 
-#endif // SHADER_H_
+#endif // SHADER_H

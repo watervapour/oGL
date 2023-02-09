@@ -3,15 +3,19 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #include "shader.h"
 #include "camera.h"
-#include "model.h"
+#include "mesh.h"
 
+#include <vector>
 #include <iostream>
 #include <cmath>
 #include <string>
 
+unsigned int loadTexture(char const * path, unsigned int wrap_mode);
 
 glm::vec3 pointLightPositions[] = {
     glm::vec3( 0.7f,  0.2f,   2.0f),
@@ -104,22 +108,144 @@ int main(int argc, char **argv){
     }
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_STENCIL_TEST);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-
+    
     int nrAttributes;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
     std::cout << "Max # of vertex attribs: " << nrAttributes << "\n";
 
     cam.position = cam.position - glm::vec3(0.0f, 0.0f, -6.0f);
 
+   float cubeVertices[] = {
+        // positions          // texture Coords
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
+    float planeVertices[] = {
+        // positions          // texture Coords 
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+        -5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
+        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+         5.0f, -0.5f, -5.0f,  2.0f, 2.0f
+    };
+    float transparentVertices[] = {
+        // positions 
+        0.0f,  0.5f,  0.0f,  0.0f,  1.0f,
+        0.0f, -0.5f,  0.0f,  0.0f,  0.0f,
+        1.0f, -0.5f,  0.0f,  1.0f,  0.0f,
+
+        0.0f,  0.5f,  0.0f,  0.0f,  1.0f,
+        1.0f, -0.5f,  0.0f,  1.0f,  0.0f,
+        1.0f,  0.5f,  0.0f,  1.0f,  1.0f
+    };
+    std::vector<glm::vec3> transparencyPositions = {
+        glm::vec3(-1.5f, 0.0f, -0.48f),
+        glm::vec3(1.5f, 0.0f, 0.51f),
+        glm::vec3(0.0f, 0.0f, 0.7f),
+        glm::vec3(-0.3f, 0.0f, -2.3f),
+        glm::vec3(0.5f, 0.0f, -0.6f),
+        glm::vec3(-3.3f, 0.0f, -2.3f),
+        glm::vec3(4.3f, 0.0f, 3.3f),
+        glm::vec3(-1.3f, 0.0f, 0.3f),
+        glm::vec3(0.3f, 0.0f, -0.1f),
+    };
 
     stbi_set_flip_vertically_on_load(true);
-    Shader shaderModel("./vertex.vs", "./fragment_model.fs");
-    Model pack = Model("../res/backpack/backpack.obj");
-    Shader outlineModel("./vertex.vs", "./fragment_light.fs");
+    Shader TexShader("./vertex.vs", "./fragment_model.fs");
+    
+    // Floor mesh
+    std::vector<unsigned int> floorInts = {
+        0, 1, 2,
+        3, 4, 5
+    };
+    std::vector<Vertex> verts;
+    for(int i = 0; i < (sizeof(planeVertices) / sizeof(float)); i+=5){
+        Vertex v;
+        v.Position = { planeVertices[0 + i], planeVertices[1 + i], planeVertices[2 + i]};
+        v.Normal = {0.0f, 0.0f, 1.0f};
+        v.TexCoords = { planeVertices[3 + i], planeVertices[4 + i]};
+        verts.push_back(v);
+    }    
+    unsigned int floorTexRef = loadTexture("../res/metal.png", GL_REPEAT);
+    Texture floor_tex = {floorTexRef, "../res/metal.png", "texture_diffuse"};
+    std::vector<Texture> texVec;
+    texVec.push_back(floor_tex);
+    Mesh M_floor = Mesh(verts, floorInts, texVec);
 
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // Cube mesh
+    std::vector<unsigned int> cubeInts;
+    for(int i = 0; i < 36; i++){
+        cubeInts.push_back(i);
+    }
+    std::vector<Vertex> cubeVerts;
+    for (int i = 0; i < (sizeof(cubeVertices) / sizeof(float)); i+=5){
+        Vertex v;
+        v.Position = { cubeVertices[i + 0], cubeVertices[i + 1], cubeVertices[i + 2]};
+        v.Normal = {0.0f, 0.0f, 1.0f};
+        v.TexCoords = { cubeVertices[i + 3], cubeVertices[i + 4] };
+        cubeVerts.push_back(v);
+    }
+    unsigned int cubeTexture = loadTexture("../res/marble.jpg", GL_CLAMP_TO_EDGE);
+    Texture cube_tex = {cubeTexture, "../res/marble.jpg", "texture_diffuse"};
+    Mesh M_cube = Mesh(cubeVerts, cubeInts, std::vector<Texture>{cube_tex});
+
+
+    // transparencies
+    Shader trShader = Shader("./vertex.vs", "./fragment_transparency.fs");
+    unsigned int trVAO, trVBO;
+    glGenVertexArrays(1, &trVAO);
+    glGenBuffers(1, &trVBO);
+    glBindVertexArray(trVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, trVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
+    unsigned int transparency = loadTexture("../res/grass.png", GL_CLAMP_TO_EDGE);
+
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -147,36 +273,40 @@ int main(int argc, char **argv){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, sin(currentFrame / 2), glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::translate(model, glm::vec3(0.0f, -0.2f, 0.0f));
         glm::mat4 view = cam.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(cam.fov), 800.0f / 600.0f, 0.1f, 100.0f);
         
-        glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        glStencilMask(0xFF);
-        shaderModel.use();
-        shaderModel.setMat4("model", model);
-        shaderModel.setMat4("view", view);
-        shaderModel.setMat4("projection", projection);
+        
+        TexShader.use();
+        TexShader.setMat4("model", model);
+        TexShader.setMat4("view", view);
+        TexShader.setMat4("projection", projection);
+        M_floor.Draw(TexShader);
 
-        pack.Draw(shaderModel);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(1.0f, 0.0f, 2.2f));
+        TexShader.setMat4("model", model);
+        M_cube.Draw(TexShader);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-4.2f, 0.3f, 0.5f));
+        TexShader.setMat4("model", model);
+        M_cube.Draw(TexShader);
 
 
-        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-        glStencilMask(0x00);
-        glDisable(GL_DEPTH_TEST);
-        model = glm::scale(model, glm::vec3(1.1f));
-        outlineModel.use();
-        outlineModel.setMat4("model", model);
-        outlineModel.setMat4("view", view);
-        outlineModel.setMat4("projection", projection);
-        glm::vec3 color = glm::vec3(0.88f, 0.63f, 0.07f);
-        outlineModel.setVec3("color", color);       
-        pack.Draw(outlineModel);
-
-        glStencilMask(0xFF);
-        glStencilFunc(GL_ALWAYS, 1, 0xff);
-        glEnable(GL_DEPTH_TEST);
+        
+        glBindVertexArray(trVAO);
+        glBindTexture(GL_TEXTURE_2D, transparency);
+        trShader.use();
+        trShader.setMat4("view", view);
+        trShader.setMat4("projection", projection);
+        trShader.setInt("Material.tex", 0);
+        for (unsigned int i = 0; i < transparencyPositions.size(); i++) {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, transparencyPositions[i]);
+            trShader.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+        
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -184,4 +314,36 @@ int main(int argc, char **argv){
  
     glfwTerminate();
     return 0;
+}
+
+unsigned int loadTexture(char const * path, unsigned int wrap_mode){
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
+    if(data){
+        GLenum format;
+        if(nrChannels == 1)
+            format = GL_RED;
+        else if (nrChannels == 3)
+            format = GL_RGB;
+        else if (nrChannels == 4)
+            format = GL_RGBA;
+
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_mode);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_mode);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    } else {
+        std::cerr << "Texture failed to load at path: " << path << std::endl;
+    }
+
+    stbi_image_free(data);
+
+    return textureID;
 }

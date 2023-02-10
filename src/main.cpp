@@ -11,6 +11,7 @@
 #include "mesh.h"
 
 #include <vector>
+#include <map>
 #include <iostream>
 #include <cmath>
 #include <string>
@@ -108,6 +109,8 @@ int main(int argc, char **argv){
     }
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     int nrAttributes;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
@@ -244,7 +247,7 @@ int main(int argc, char **argv){
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
-    unsigned int transparency = loadTexture("../res/grass.png", GL_CLAMP_TO_EDGE);
+    unsigned int transparency = loadTexture("../res/blending_transparent_window.png", GL_CLAMP_TO_EDGE);
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
@@ -293,16 +296,21 @@ int main(int argc, char **argv){
         M_cube.Draw(TexShader);
 
 
-        
+        std::map<float, glm::vec3> sorted;
+        for (unsigned int i = 0; i < transparencyPositions.size(); i++){
+            float distance = glm::length(cam.position - transparencyPositions[i]);
+            sorted[distance] = transparencyPositions[i];
+        }
+                
         glBindVertexArray(trVAO);
         glBindTexture(GL_TEXTURE_2D, transparency);
         trShader.use();
         trShader.setMat4("view", view);
         trShader.setMat4("projection", projection);
         trShader.setInt("Material.tex", 0);
-        for (unsigned int i = 0; i < transparencyPositions.size(); i++) {
+        for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it) {
             model = glm::mat4(1.0f);
-            model = glm::translate(model, transparencyPositions[i]);
+            model = glm::translate(model, it->second);
             trShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }

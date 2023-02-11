@@ -16,18 +16,8 @@
 #include <cmath>
 #include <string>
 
-unsigned int loadTexture(char const * path, unsigned int wrap_mode);
-
-glm::vec3 pointLightPositions[] = {
-    glm::vec3( 0.7f,  0.2f,   2.0f),
-    glm::vec3( 2.3f, -3.3f,  -4.0f),
-    glm::vec3(-4.0f,  2.0f, -12.0f),
-    glm::vec3( 0.0f,  0.0f,  -3.0f)
-};
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height){
-    glViewport(0, 0, width, height);
-}
+unsigned int window_width = 800;
+unsigned int window_height = 600;
 
 Camera cam;
 
@@ -38,6 +28,11 @@ float frameSum = 0.0f;
 int fpsCount = 0;
 int fpsHistoric = 0;
 
+void framebuffer_size_callback(GLFWwindow *window, int width, int height){
+    window_width = width;
+    window_height = height;
+    glViewport(0, 0, width, height);
+}
 void processInput(GLFWwindow *window){
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
         glfwSetWindowShouldClose(window, true);
@@ -61,8 +56,8 @@ void processInput(GLFWwindow *window){
     
 }
 
-float lastX = 400.0f;
-float lastY = 300.0f;
+float lastX = (float)window_width/2.0f;
+float lastY = (float)window_height/2.0f;
 bool firstMouse = true;
 void mouse_callback(GLFWwindow* window, double xpos, double ypos){
     if (firstMouse){
@@ -80,6 +75,8 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
     cam.ProcessMouseScroll(yoffset);
 }
 
+unsigned int loadTexture(char const * path, unsigned int wrap_mode);
+
 int main(int argc, char **argv){
 
     GLFWwindow *window;
@@ -91,7 +88,7 @@ int main(int argc, char **argv){
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow(800, 600, "oGL", NULL, NULL);
+    window = glfwCreateWindow(window_width, window_height, "oGL", NULL, NULL);
     if (window == NULL){
         std::cerr << "Failed to create window\n";
         glfwTerminate();
@@ -121,7 +118,52 @@ int main(int argc, char **argv){
 
     cam.position = cam.position - glm::vec3(0.0f, 0.0f, -6.0f);
 
-   float cubeVertices[] = {
+    unsigned int fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    unsigned int fbo_texture;
+    glGenTextures(1, &fbo_texture);
+    glBindTexture(GL_TEXTURE_2D, fbo_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window_width, window_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, window_width, window_height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        std::cerr << "Framebuffer creation error!" << std::endl;
+        return -1;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    float quadVertices[] ={
+        -1.0f, 1.0f,    0.0f, 1.0f,
+        -1.0f,-1.0f,    0.0f, 0.0f,
+         1.0f,-1.0f,    1.0f, 0.0f,
+        
+        -1.0f, 1.0f,    0.0f, 1.0f,
+         1.0f,-1.0f,    1.0f, 0.0f,
+         1.0f, 1.0f,    1.0f, 1.0f
+    };
+    
+    unsigned int fbqVAO, fbqVBO;
+    glGenVertexArrays(1, &fbqVAO);
+    glGenBuffers(1, &fbqVBO);
+    glBindVertexArray(fbqVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, fbqVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(2 * sizeof(float)));
+    glBindVertexArray(0);
+    Shader fbq_shader = Shader("./vertex_fbquad.vs", "./fragment_fbquad.fs");
+    fbq_shader.use();
+    fbq_shader.setInt("screenTexture", 0);
+
+    float cubeVertices[] = {
         // positions          // texture Coords
         // back
         -0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
@@ -233,8 +275,8 @@ int main(int argc, char **argv){
         v.TexCoords = { cubeVertices[i + 3], cubeVertices[i + 4] };
         cubeVerts.push_back(v);
     }
-    unsigned int cubeTexture = loadTexture("../res/marble.jpg", GL_CLAMP_TO_EDGE);
-    Texture cube_tex = {cubeTexture, "../res/marble.jpg", "texture_diffuse"};
+    unsigned int cubeTexture = loadTexture("../res/container.jpg", GL_CLAMP_TO_EDGE);
+    Texture cube_tex = {cubeTexture, "../res/container.jpg", "texture_diffuse"};
     Mesh M_cube = Mesh(cubeVerts, cubeInts, std::vector<Texture>{cube_tex});
 
 
@@ -276,12 +318,16 @@ int main(int argc, char **argv){
         glfwSetWindowTitle(window, windowTitle.c_str());
 
         processInput(window);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glEnable(GL_DEPTH_TEST);
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        
 
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = cam.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(cam.fov), 800.0f / 600.0f, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(cam.fov), ( (float)window_width / (float)window_height ), 0.1f, 100.0f);
         
         
         TexShader.use();
@@ -299,13 +345,11 @@ int main(int argc, char **argv){
         TexShader.setMat4("model", model);
         M_cube.Draw(TexShader);
 
-
         std::map<float, glm::vec3> sorted;
         for (unsigned int i = 0; i < transparencyPositions.size(); i++){
             float distance = glm::length(cam.position - transparencyPositions[i]);
             sorted[distance] = transparencyPositions[i];
-        }
-                
+        } 
         glBindVertexArray(trVAO);
         glBindTexture(GL_TEXTURE_2D, transparency);
         trShader.use();
@@ -319,11 +363,25 @@ int main(int argc, char **argv){
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
         
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDisable(GL_DEPTH_TEST);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        
+        fbq_shader.use();
+        glBindVertexArray(fbqVAO);
+        glBindTexture(GL_TEXTURE_2D, fbo_texture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
- 
+    glDeleteVertexArrays(1, &trVAO);
+    glDeleteBuffers(1, &trVBO);
+    glDeleteVertexArrays(1, &fbqVAO);
+    glDeleteBuffers(1, &fbqVBO);
+
+    glDeleteFramebuffers(1, &fbo);
     glfwTerminate();
     return 0;
 }

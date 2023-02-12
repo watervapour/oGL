@@ -65,5 +65,5 @@ void main(){
         //sobelY += sampleTex * sobelYKernel[i];
     }
     //matrixColor = sqrt(sobelX*sobelX + sobelY*sobelY);
-    FragColor = vec4(matrixColor, 1.0);
+    //FragColor = vec4(matrixColor, 1.0);
 }

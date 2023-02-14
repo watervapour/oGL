@@ -3,12 +3,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
 #include "shader.h"
 #include "camera.h"
-#include "mesh.h"
+#include "model.h"
 
 #include <vector>
 #include <map>
@@ -100,17 +98,20 @@ int main(int argc, char **argv){
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    GLFWimage logo;
+    logo.pixels = stbi_load("../res/oGL-logo.png", &logo.width, &logo.height, 0, 4);
+    glfwSetWindowIcon(window, 1, &logo);
+    stbi_image_free(logo.pixels);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
         std::cerr << "Failed to init GLAD.\n";
         return -1;
     }
 
-    //stbi_set_flip_vertically_on_load(true);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    // glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
     
@@ -243,7 +244,7 @@ int main(int argc, char **argv){
     };
 
     
-    Shader TexShader("./vertex.vs", "./fragment_model.fs");
+    Shader TexShader("./vertex.vs", "./fragment_generic_tex.fs");
     
     // Floor mesh
     std::vector<unsigned int> floorInts = {
@@ -281,6 +282,11 @@ int main(int argc, char **argv){
     Texture cube_tex = {cubeTexture, "../res/container.jpg", "texture_diffuse"};
     Mesh M_cube = Mesh(cubeVerts, cubeInts, std::vector<Texture>{cube_tex});
 
+    // pack model
+    Shader ModelShader("./vertex.vs", "./fragment_model.fs");
+    ModelShader.use();
+    ModelShader.setInt("skybox", 0);
+    Model pack = Model("../res/backpack/backpack.obj");
 
     // transparencies
     Shader trShader = Shader("./vertex.vs", "./fragment_transparency.fs");
@@ -425,6 +431,20 @@ int main(int argc, char **argv){
         TexShader.setMat4("model", model);
         M_cube.Draw(TexShader);
 
+        ModelShader.use();
+        model = glm::mat4(1.0f);
+        model = glm::scale(model, glm::vec3(0.2f));
+        model = glm::rotate(model, sin(currentFrame), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, 0.8f, 0.0f));
+        ModelShader.setMat4("view", view);
+        ModelShader.setMat4("projection", projection);
+        ModelShader.setMat4("model", model);
+        ModelShader.setVec3("cameraPos", cam.position);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
+        pack.Draw(ModelShader); 
+
+        glDisable(GL_CULL_FACE);
         std::map<float, glm::vec3> sorted;
         for (unsigned int i = 0; i < transparencyPositions.size(); i++){
             float distance = glm::length(cam.position - transparencyPositions[i]);
@@ -442,9 +462,7 @@ int main(int argc, char **argv){
             trShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
-
-       
-
+        glEnable(GL_CULL_FACE);
         
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDisable(GL_DEPTH_TEST);

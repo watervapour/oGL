@@ -221,16 +221,26 @@ int main(int argc, char **argv){
          5.0f, -0.5f, -5.0f,  2.0f, 2.0f,
         -5.0f, -0.5f, -5.0f,  0.0f, 2.0f
     };
-    float transparentVertices[] = {
-        // positions 
-        0.0f,  0.5f,  0.0f,  0.0f,  1.0f,
-        0.0f, -0.5f,  0.0f,  0.0f,  0.0f,
-        1.0f, -0.5f,  0.0f,  1.0f,  0.0f,
+    float transparentVerticePostions[] = {
+        0.0f,  0.5f,  0.0f,
+        0.0f, -0.5f,  0.0f,
+        1.0f, -0.5f,  0.0f,
 
-        0.0f,  0.5f,  0.0f,  0.0f,  1.0f,
-        1.0f, -0.5f,  0.0f,  1.0f,  0.0f,
-        1.0f,  0.5f,  0.0f,  1.0f,  1.0f
+        0.0f,  0.5f,  0.0f,
+        1.0f, -0.5f,  0.0f,
+        1.0f,  0.5f,  0.0f
     };
+    float transparentVerticeUVs[] = {        
+        0.0f,  1.0f,
+        0.0f,  0.0f,
+        1.0f,  0.0f,
+
+        0.0f,  1.0f,
+        1.0f,  0.0f,
+        1.0f,  1.0f
+    };
+
+
     std::vector<glm::vec3> transparencyPositions = {
         glm::vec3(-1.5f, 0.0f, -0.48f),
         glm::vec3(1.5f, 0.0f, 0.51f),
@@ -295,11 +305,13 @@ int main(int argc, char **argv){
     glGenBuffers(1, &trVBO);
     glBindVertexArray(trVAO);
     glBindBuffer(GL_ARRAY_BUFFER, trVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVerticePostions) + sizeof(transparentVerticeUVs), NULL, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(transparentVerticePostions), &transparentVerticePostions);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(transparentVerticePostions), sizeof(transparentVerticeUVs), &transparentVerticeUVs);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, (void*)(sizeof(transparentVerticePostions)));
     glBindVertexArray(0);
     unsigned int transparency = loadTexture("../res/blending_transparent_window.png", GL_CLAMP_TO_EDGE);
 

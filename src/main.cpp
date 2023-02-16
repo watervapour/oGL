@@ -114,7 +114,6 @@ int main(int argc, char **argv){
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
-    glEnable(GL_PROGRAM_POINT_SIZE);
 
     int nrAttributes;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
@@ -473,7 +472,7 @@ int main(int argc, char **argv){
             model = glm::mat4(1.0f);
             model = glm::translate(model, it->second);
             trShader.setMat4("model", model);
-            glDrawArrays(GL_POINTS, 0, 6);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
         }
         glEnable(GL_CULL_FACE);
         

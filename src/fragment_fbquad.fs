@@ -1,12 +1,17 @@
 #version 330 core
-in vec2 TexCoords;
+in VS_OUT{
+    vec3 FragPos;
+    vec3 Normal;
+    vec2 TexCoords;
+} fs_in;
+
 uniform sampler2D screenTexture;
 
 out vec4 FragColor;
 
 const float offset = 1.0 / 300.0;
 void main(){
-    vec3 screenColor = texture(screenTexture, TexCoords).rgb;
+    vec3 screenColor = texture(screenTexture, fs_in.TexCoords).rgb;
     FragColor = vec4(screenColor, 1.0);
 
     // inverted colors
@@ -59,7 +64,7 @@ void main(){
     vec3 sobelX = vec3(0.0);
     vec3 sobelY = vec3(0.0);
     for(int i = 0; i < 9; i++){
-        vec3 sampleTex = vec3(texture(screenTexture, TexCoords.st + offsets[i]));
+        vec3 sampleTex = vec3(texture(screenTexture, fs_in.TexCoords.st + offsets[i]));
         matrixColor += sampleTex * sharpenKernel[i];
         //sobelX += sampleTex * sobelXKernel[i];
         //sobelY += sampleTex * sobelYKernel[i];

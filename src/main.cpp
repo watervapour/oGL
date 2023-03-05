@@ -166,6 +166,13 @@ int main(int argc, char **argv){
     fbq_shader.use();
     fbq_shader.setInt("screenTexture", 0);
 
+    unsigned int uboMatrices;
+    glGenBuffers(1, &uboMatrices);
+    glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
+    glBufferData(GL_UNIFORM_BUFFER, 2*sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, uboMatrices, 0, 2*sizeof(glm::mat4));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
     float cubeVertices[] = {
         // positions          // texture Coords
         // back
@@ -383,6 +390,9 @@ int main(int argc, char **argv){
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
     glBindVertexArray(0);
     
+    unsigned int trShader_matrices = glGetUniformBlockIndex(trShader.ID, "matrices");
+    glUniformBlockBinding(trShader.ID, trShader_matrices, 0);
+
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -416,7 +426,12 @@ int main(int argc, char **argv){
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = cam.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(cam.fov), ( (float)window_width / (float)window_height ), 0.1f, 100.0f);
-        
+    
+        glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &projection);
+        glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &view);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
         glDepthMask(GL_FALSE);
         skybox_shader.use();
         glm::mat4 skybox_view = glm::mat4(glm::mat3(cam.GetViewMatrix()));
@@ -430,8 +445,7 @@ int main(int argc, char **argv){
 
         TexShader.use();
         TexShader.setMat4("model", model);
-        TexShader.setMat4("view", view);
-        TexShader.setMat4("projection", projection);
+        //TexShader.setMat4("view", view);
         M_floor.Draw(TexShader);
 
         model = glm::mat4(1.0f);
@@ -448,8 +462,6 @@ int main(int argc, char **argv){
         model = glm::scale(model, glm::vec3(0.2f));
         model = glm::rotate(model, sin(currentFrame), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::translate(model, glm::vec3(0.0f, 0.8f, 0.0f));
-        ModelShader.setMat4("view", view);
-        ModelShader.setMat4("projection", projection);
         ModelShader.setMat4("model", model);
         ModelShader.setVec3("cameraPos", cam.position);
         glActiveTexture(GL_TEXTURE0);
@@ -465,8 +477,6 @@ int main(int argc, char **argv){
         glBindVertexArray(trVAO);
         glBindTexture(GL_TEXTURE_2D, transparency);
         trShader.use();
-        trShader.setMat4("view", view);
-        trShader.setMat4("projection", projection);
         trShader.setInt("Material.tex", 0);
         for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it) {
             model = glm::mat4(1.0f);

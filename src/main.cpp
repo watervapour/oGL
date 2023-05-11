@@ -91,7 +91,10 @@ int main(int argc, char **argv){
 			return -1;
 		}
 	#else
-		std::cerr << "linux dir changing not setup!\n";
+		std::string basePath = std::string(argv[0]);
+		int pathMarker = basePath.rfind('/');
+		basePath = (pathMarker != -1) ? basePath.substr(0, pathMarker) : ".";
+		std::cerr << "linux dir changing not tested!\n";
 		return -1;
 	#endif
 
@@ -138,26 +141,9 @@ int main(int argc, char **argv){
 
     cam.position = cam.position - glm::vec3(0.0f, 0.0f, -6.0f);
 
-	float points[] = {
-		-0.5f,  0.5f, 1.0f, 0.0f, 0.0f, // top-left
-		 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, // top-right
-		 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, // bottom-left
-		-0.5f, -0.5f, 1.0f, 1.0f, 0.0f  // bottom-right
-	};
-
-	unsigned int pointsVAO, pointsVBO;
-	glGenVertexArrays(1, &pointsVAO);
-	glGenBuffers(1, &pointsVBO);
-	glBindVertexArray(pointsVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, pointsVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float)*5, (void*)0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float)*5, (void*)(sizeof(float)*3));
-	
-	Shader pointsShader("./src/geo-simple.vs", "./src/geo-house.gs", "./src/geo-simple.fs");
-	pointsShader.use();
+	Shader packShader("./src/shaders/explode.vs", "./src/shaders/explode.gs", "./src/shaders/explode.fs");
+	packShader.use();
+	Model pack = Model("./res/backpack/backpack.obj");
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
@@ -182,19 +168,22 @@ int main(int argc, char **argv){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         
 		// main rendering section
-		pointsShader.use();
-		glBindVertexArray(pointsVAO);
-		
-		glDrawArrays(GL_POINTS, 0, 4);
-
+		packShader.use();
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 view = cam.GetViewMatrix();
+		glm::mat4 projection = glm::perspective(glm::radians(cam.fov), ( (float)window_width / (float)window_height ), 0.1f, 100.0f);
+		packShader.setMat4("model", model);
+		packShader.setMat4("view", view);
+		packShader.setMat4("projection", projection);
+		packShader.setVec3("cameraPos", cam.position);
+		packShader.setFloat("time", currentFrame);
+		pack.Draw(packShader);
 
 		// end main rendering section
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-	glDeleteVertexArrays(1, &pointsVAO);
-    glDeleteBuffers(1, &pointsVBO);
 
     glfwTerminate();
     return 0;

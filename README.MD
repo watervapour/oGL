@@ -54,6 +54,19 @@ For intellisense, my c_cpp_properties.json has:
     "S:\\Mutual\\Code\\C++\\Libraries\\assimp\\build\\include"
 ],
 ```
+
+### GIT
+When I attempted to edit this repo from a secondary device, I ran into issues with the initial commit between operating systems. The two systems are:
+ - 'PC': Windows 10 host, VSCode, git for windows.
+ - 'Laptop': Windows 10 host, WSL debian guest, git and vi inside of guest.
+
+On the laptop, the repo was still installed on the host NTFS partition. When first attempting to commit on the laptop, all files were marked as changed. Every single line infact was 'changed'. The two most likely culprits were WSL confusing git due to different ACLs on the files. The main change within the diffs showed the differing newline. I had run
+```
+ git config core.autocrlf = true
+ git config core.filemode = false
+``` 
+These changes had fixed the issue, but I had after that fix reset the repo, and the issue was not present. At time of writing .git/config does contain the filemode option.
+
 ### GLFW
 GLFW was built using its supplied CMAKE config. The library is then statically compiled into this project. If changing to dynamic linking, or chaging the includes, be aware that GLFW requires specific ```#define``` statements, and ordering of ```#include``` lines.
 ### GLAD

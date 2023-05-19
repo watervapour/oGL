@@ -141,6 +141,7 @@ int main(int argc, char **argv){
 
     cam.position = cam.position - glm::vec3(0.0f, 0.0f, -6.0f);
 
+	stbi_set_flip_vertically_on_load(true);
 	Shader packShader("./src/shaders/explode.vs", "./src/shaders/explode.gs", "./src/shaders/explode.fs");
 	packShader.use();
 	Model pack = Model("./res/backpack/backpack.obj");
